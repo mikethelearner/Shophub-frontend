@@ -10,7 +10,7 @@ const Shop = () => {
     {
       id: 1,
       name: "Paracetamol 500mg",
-      price: 5.99,
+      price: 149,
       rating: 4.5,
       image: "https://via.placeholder.com/200",
       description: "Effective pain relief and fever reducer",
@@ -19,7 +19,7 @@ const Shop = () => {
     {
       id: 2,
       name: "Vitamin C 1000mg",
-      price: 15.99,
+      price: 399,
       rating: 4.8,
       image: "https://via.placeholder.com/200",
       description: "Immune system support supplement",
@@ -28,7 +28,7 @@ const Shop = () => {
     {
       id: 3,
       name: "Digital BP Monitor",
-      price: 49.99,
+      price: 1499,
       rating: 4.7,
       image: "https://via.placeholder.com/200",
       description: "Accurate blood pressure monitoring",
@@ -37,7 +37,7 @@ const Shop = () => {
     {
       id: 4,
       name: "First Aid Kit",
-      price: 29.99,
+      price: 899,
       rating: 4.6,
       image: "https://via.placeholder.com/200",
       description: "Complete emergency medical kit",
@@ -46,7 +46,7 @@ const Shop = () => {
     {
       id: 5,
       name: "Omega-3 Fish Oil",
-      price: 19.99,
+      price: 599,
       rating: 4.4,
       image: "https://via.placeholder.com/200",
       description: "Heart and brain health supplement",
@@ -55,7 +55,7 @@ const Shop = () => {
     {
       id: 6,
       name: "Hand Sanitizer",
-      price: 3.99,
+      price: 99,
       rating: 4.3,
       image: "https://via.placeholder.com/200",
       description: "Kills 99.9% of germs",
@@ -152,7 +152,7 @@ const Shop = () => {
                       </span>
                     </div>
                     <p className="text-[#9b87f5] font-semibold">
-                      ${product.price.toFixed(2)}
+                      ₹{product.price.toFixed(2)}
                     </p>
                   </CardContent>
                   <CardFooter className="p-4 pt-0">

@@ -9,21 +9,21 @@ const Cart = () => {
     {
       id: 1,
       name: "Paracetamol 500mg",
-      price: 5.99,
+      price: 149,
       quantity: 2,
       image: "https://via.placeholder.com/100",
     },
     {
       id: 2,
       name: "Vitamin C 1000mg",
-      price: 15.99,
+      price: 399,
       quantity: 1,
       image: "https://via.placeholder.com/100",
     },
   ];
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const shipping = 4.99;
+  const shipping = 99;
   const total = subtotal + shipping;
 
   return (
@@ -50,7 +50,7 @@ const Cart = () => {
                     <div className="flex-1">
                       <h3 className="font-semibold text-lg">{item.name}</h3>
                       <p className="text-[#9b87f5] font-semibold">
-                        ${item.price.toFixed(2)}
+                        ₹{item.price.toFixed(2)}
                       </p>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -91,15 +91,15 @@ const Cart = () => {
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span>${subtotal.toFixed(2)}</span>
+                  <span>₹{subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Shipping</span>
-                  <span>${shipping.toFixed(2)}</span>
+                  <span>₹{shipping.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-semibold text-lg">
                   <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>₹{total.toFixed(2)}</span>
                 </div>
               </CardContent>
               <CardFooter>
