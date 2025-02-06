@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -89,9 +88,11 @@ const Index = () => {
                   Shop Now
                 </Button>
               </Link>
-              <Button variant="outline" size="lg" className="border-[#9b87f5] text-[#9b87f5]">
-                Upload Prescription
-              </Button>
+              <Link to="/prescription">
+                <Button variant="outline" size="lg" className="border-[#9b87f5] text-[#9b87f5]">
+                  Upload Prescription
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
