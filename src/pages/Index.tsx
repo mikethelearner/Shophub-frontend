@@ -84,9 +84,11 @@ const Index = () => {
               Get your medicines delivered at your doorstep
             </p>
             <div className="mt-8">
-              <Button size="lg" className="mr-4 bg-[#9b87f5] hover:bg-[#7E69AB]">
-                Shop Now
-              </Button>
+              <Link to="/shop">
+                <Button size="lg" className="mr-4 bg-[#9b87f5] hover:bg-[#7E69AB]">
+                  Shop Now
+                </Button>
+              </Link>
               <Button variant="outline" size="lg" className="border-[#9b87f5] text-[#9b87f5]">
                 Upload Prescription
               </Button>
