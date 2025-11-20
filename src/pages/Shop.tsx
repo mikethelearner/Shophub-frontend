@@ -1,169 +1,249 @@
+import { useState, useEffect } from 'react';
+import { useProducts } from '@/hooks/useProducts';
+import { useCart } from '@/hooks/useCart';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Loader2, Star, ShoppingBag } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Search, ShoppingCart, Star } from "lucide-react";
-import { Link } from "react-router-dom";
+// Add backend URL constant
+const BACKEND_URL = 'http://localhost:8000';
 
 const Shop = () => {
-  const products = [
-    {
-      id: 1,
-      name: "Paracetamol 500mg",
-      price: 149,
-      rating: 4.5,
-      image: "https://via.placeholder.com/200",
-      description: "Effective pain relief and fever reducer",
-      category: "Pain Relief",
-    },
-    {
-      id: 2,
-      name: "Vitamin C 1000mg",
-      price: 399,
-      rating: 4.8,
-      image: "https://via.placeholder.com/200",
-      description: "Immune system support supplement",
-      category: "Vitamins",
-    },
-    {
-      id: 3,
-      name: "Digital BP Monitor",
-      price: 1499,
-      rating: 4.7,
-      image: "https://via.placeholder.com/200",
-      description: "Accurate blood pressure monitoring",
-      category: "Medical Devices",
-    },
-    {
-      id: 4,
-      name: "First Aid Kit",
-      price: 899,
-      rating: 4.6,
-      image: "https://via.placeholder.com/200",
-      description: "Complete emergency medical kit",
-      category: "Medical Supplies",
-    },
-    {
-      id: 5,
-      name: "Omega-3 Fish Oil",
-      price: 599,
-      rating: 4.4,
-      image: "https://via.placeholder.com/200",
-      description: "Heart and brain health supplement",
-      category: "Supplements",
-    },
-    {
-      id: 6,
-      name: "Hand Sanitizer",
-      price: 99,
-      rating: 4.3,
-      image: "https://via.placeholder.com/200",
-      description: "Kills 99.9% of germs",
-      category: "Personal Care",
-    },
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
+
+  const { addToCart } = useCart();
+
+  // Define categories with their display names
+  const categories = [
+    "All Products",
+    "Electronics",
+    "Fashion",
+    "Home & Kitchen",
+    "Beauty & Personal Care",
+    "Sports & Outdoors",
+    "Books",
+    "Toys & Games"
   ];
 
+  // Map display categories to database categories
+  const categoryMapping: Record<string, string> = {
+    "Electronics": "electronics",
+    "Fashion": "clothing",
+    "Home & Kitchen": "home",
+    "Beauty & Personal Care": "beauty",
+    "Sports & Outdoors": "sports",
+    "Books": "books",
+    "Toys & Games": "toys"
+  };
+
+  // Parse URL parameters when component mounts
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const categoryParam = searchParams.get('category');
+    
+    if (categoryParam && categories.includes(categoryParam)) {
+      setSelectedCategory(categoryParam);
+      console.log('Setting category from URL:', categoryParam);
+    }
+  }, [location.search]);
+
+  // Get the database category value for API filtering
+  const getDatabaseCategory = (displayCategory: string | null) => {
+    if (!displayCategory || displayCategory === "All Products") return null;
+    const dbCategory = categoryMapping[displayCategory] || displayCategory.toLowerCase();
+    console.log(`Mapping display category "${displayCategory}" to database category "${dbCategory}"`);
+    return dbCategory;
+  };
+
+  const apiCategory = selectedCategory && selectedCategory !== "All Products" 
+    ? getDatabaseCategory(selectedCategory) as string 
+    : undefined;
+
+  console.log('Category for API request:', {
+    selectedCategory,
+    apiCategory,
+    categoriesParam: apiCategory ? [apiCategory] : undefined
+  });
+
+  const { data, isLoading, error: apiError, refetch } = useProducts({
+    search: searchQuery,
+    categories: apiCategory ? [apiCategory] : undefined,
+    minPrice: priceRange[0],
+    maxPrice: priceRange[1],
+  });
+
+  useEffect(() => {
+    console.log('Products data:', {
+      data,
+      isLoading,
+      apiError,
+      selectedCategory,
+      searchQuery,
+      priceRange
+    });
+  }, [data, isLoading, apiError, selectedCategory, searchQuery, priceRange]);
+
+  const handleAddToCart = (product: any) => {
+    console.log('Adding product to cart (Shop.tsx):', product);
+    addToCart(product);
+    toast({
+      title: 'Added to cart',
+      description: `${product.name} has been added to your cart.`,
+    });
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setSelectedCategory(null);
+    setPriceRange([0, 1000]);
+  };
+
+  const handleProductClick = (productId: string) => {
+    navigate(`/product/${productId}`);
+  };
+
+  if (isLoading) {
+    console.log('Showing loading state');
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (apiError) {
+    console.error('Error loading products:', apiError);
+    return (
+      <div className="text-center py-8">
+        <div className="text-red-500 mb-4">Error loading products. Please try again later.</div>
+        <Button onClick={() => refetch()}>Retry</Button>
+      </div>
+    );
+  }
+
+  const filteredProducts = data?.products || [];
+  console.log('Rendering products:', filteredProducts);
+
   return (
-    <div className="min-h-screen bg-[#F1F0FB]">
-      {/* Navigation Bar */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link to="/" className="flex-shrink-0">
-              <h1 className="text-2xl font-bold text-[#9b87f5]">E-Pharma</h1>
-            </Link>
-            <div className="flex-1 max-w-lg mx-auto px-4">
-              <div className="relative">
-                <Input
-                  type="text"
-                  placeholder="Search products..."
-                  className="w-full pl-10"
-                />
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              </div>
+    <div className="min-h-screen bg-[#F1F0FB] py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 className="text-3xl font-bold mb-8 text-gray-900">Shop Products</h2>
+
+        {/* Search and Filter Section */}
+        <div className="bg-white p-4 rounded-lg shadow-sm mb-8">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <Input
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full"
+              />
             </div>
-            <div className="flex items-center space-x-4">
-              <Link to="/cart">
-                <Button variant="ghost" size="icon">
-                  <ShoppingCart className="h-5 w-5 text-[#9b87f5]" />
-                </Button>
-              </Link>
-              <Link to="/login">
-                <Button className="bg-[#9b87f5] hover:bg-[#7E69AB]">
-                  Login
-                </Button>
-              </Link>
+            <div className="flex-1">
+              <Select
+                value={selectedCategory || ""}
+                onValueChange={(value) => setSelectedCategory(value === "All Products" ? null : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1">
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm">Price Range: ${priceRange[0]} - ${priceRange[1]}</span>
+                </div>
+                <Slider
+                  defaultValue={[0, 1000]}
+                  min={0}
+                  max={1000}
+                  step={10}
+                  value={priceRange}
+                  onValueChange={(value) => setPriceRange(value as [number, number])}
+                  className="bg-[#3b82f6]"
+                />
+              </div>
             </div>
           </div>
         </div>
-      </nav>
 
-      {/* Filter and Products Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {/* Filters Sidebar */}
-          <div className="md:col-span-1">
-            <Card className="p-4 border-[#9b87f5]/20">
-              <h3 className="font-semibold mb-4">Filters</h3>
-              <div className="space-y-4">
-                <div>
-                  <h4 className="text-sm font-medium mb-2">Categories</h4>
-                  <div className="space-y-2">
-                    {["Pain Relief", "Vitamins", "Medical Devices", "Medical Supplies", "Supplements", "Personal Care"].map(
-                      (category) => (
-                        <label key={category} className="flex items-center space-x-2">
-                          <input type="checkbox" className="rounded border-gray-300 text-[#9b87f5]" />
-                          <span className="text-sm">{category}</span>
-                        </label>
-                      )
+        {/* Products Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {filteredProducts.length === 0 ? (
+            <div className="col-span-full text-center py-8">
+              <p className="text-gray-500">No products found matching your criteria.</p>
+              <Button onClick={clearFilters} className="mt-4 bg-[#3b82f6] hover:bg-[#2563eb]">
+                Reset Filters
+              </Button>
+            </div>
+          ) : (
+            filteredProducts.map((product) => (
+              <Card 
+                key={product._id} 
+                className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => handleProductClick(product._id)}
+              >
+                <div className="aspect-square bg-gray-100 p-4">
+                  <div className="w-full h-full flex items-center justify-center">
+                    {product.imageUrl ? (
+                      <img
+                        src={product.imageUrl.startsWith('http') 
+                          ? product.imageUrl 
+                          : product.imageUrl.startsWith('/') 
+                            ? `${BACKEND_URL}${product.imageUrl}` 
+                            : `${BACKEND_URL}/${product.imageUrl}`}
+                        alt={product.name}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          console.error('Image load error for:', product.name, product.imageUrl);
+                          const target = e.currentTarget as HTMLImageElement;
+                          target.src = 'https://placehold.co/200x200?text=No+Image';
+                        }}
+                      />
+                    ) : (
+                      <ShoppingBag className="h-12 w-12 text-gray-400" />
                     )}
                   </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-medium mb-2">Price Range</h4>
-                  <div className="space-y-2">
-                    <Input type="number" placeholder="Min" className="w-full" />
-                    <Input type="number" placeholder="Max" className="w-full" />
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          {/* Products Grid */}
-          <div className="md:col-span-2 lg:col-span-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {products.map((product) => (
-                <Card key={product.id} className="border-[#9b87f5]/20">
-                  <CardContent className="p-4">
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="w-full h-48 object-cover rounded-md mb-4"
-                    />
-                    <h3 className="font-semibold text-lg mb-1">{product.name}</h3>
-                    <p className="text-sm text-gray-600 mb-2">
-                      {product.description}
-                    </p>
-                    <div className="flex items-center space-x-1 mb-2">
-                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm text-gray-600">
-                        {product.rating}
-                      </span>
-                    </div>
-                    <p className="text-[#9b87f5] font-semibold">
-                      ₹{product.price.toFixed(2)}
-                    </p>
-                  </CardContent>
-                  <CardFooter className="p-4 pt-0">
-                    <Button className="w-full bg-[#9b87f5] hover:bg-[#7E69AB]">
+                <CardContent className="p-4">
+                  <h3 className="font-semibold text-lg mb-1">{product.name}</h3>
+                  <p className="text-sm text-gray-500 mb-2 line-clamp-2">{product.description}</p>
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-lg">₹{product.price.toFixed(2)}</span>
+                    <Button
+                      size="sm"
+                      className="bg-[#3b82f6] hover:bg-[#2563eb]"
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent navigation when clicking the button
+                        handleAddToCart(product);
+                      }}
+                    >
                       Add to Cart
                     </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
       </div>
     </div>

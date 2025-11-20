@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Order Status Update</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Debug Order Status Update</h1>
+    
+    <div class="form-group">
+        <label for="orderId">Order ID:</label>
+        <input type="text" id="orderId" placeholder="Enter order ID">
+    </div>
+    
+    <div class="form-group">
+        <label for="status">Status:</label>
+        <select id="status">
+            <option value="pending">Pending</option>
+            <option value="processing">Processing</option>
+            <option value="shipped">Shipped</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="cancel_requested">Cancellation Requested</option>
+            <option value="delivery_confirmed">Delivery Confirmed</option>
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label for="requestBody">Request Body (JSON):</label>
+        <textarea id="requestBody" rows="5">{"status": "pending"}</textarea>
+    </div>
+    
+    <div>
+        <button id="updateStatus">Update Status</button>
+        <button id="clearResults">Clear Results</button>
+    </div>
+    
+    <h2>Results:</h2>
+    <div id="results">
+        <p>Click the Update Status button to test the API.</p>
+    </div>
+    
+    <script>
+        // Get DOM elements
+        const resultsDiv = document.getElementById('results');
+        const orderIdInput = document.getElementById('orderId');
+        const statusSelect = document.getElementById('status');
+        const requestBodyTextarea = document.getElementById('requestBody');
+        const updateStatusBtn = document.getElementById('updateStatus');
+        const clearResultsBtn = document.getElementById('clearResults');
+        
+        // Update request body when status changes
+        statusSelect.addEventListener('change', () => {
+            requestBodyTextarea.value = JSON.stringify({ status: statusSelect.value }, null, 2);
+        });
+        
+        // Helper function to display results
+        function displayResult(title, data, isError = false) {
+            const resultElement = document.createElement('div');
+            resultElement.innerHTML = `
+                <h3>${title}</h3>
+                <pre class="${isError ? 'error' : ''}">${JSON.stringify(data, null, 2)}</pre>
+                <hr>
+            `;
+            resultsDiv.appendChild(resultElement);
+        }
+        
+        // Update order status
+        updateStatusBtn.addEventListener('click', async () => {
+            const orderId = orderIdInput.value.trim();
+            let requestBody;
+            
+            if (!orderId) {
+                displayResult('Error', { error: 'Please enter an order ID' }, true);
+                return;
+            }
+            
+            try {
+                requestBody = JSON.parse(requestBodyTextarea.value);
+            } catch (e) {
+                displayResult('Error', { error: 'Invalid JSON in request body' }, true);
+                return;
+            }
+            
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    displayResult('Error', { error: 'No authentication token found. Please log in first.' }, true);
+                    return;
+                }
+                
+                displayResult('Request', {
+                    url: `http://localhost:8000/api/orders/${orderId}/status/`,
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Token ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: requestBody
+                });
+                
+                const response = await fetch(`http://localhost:8000/api/orders/${orderId}/status/`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Token ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                const responseData = await response.json();
+                
+                if (!response.ok) {
+                    displayResult(`Error (${response.status})`, responseData, true);
+                } else {
+                    displayResult('Success', responseData);
+                }
+            } catch (error) {
+                displayResult('Error', {
+                    message: error.message,
+                }, true);
+            }
+        });
+        
+        // Clear results
+        clearResultsBtn.addEventListener('click', () => {
+            resultsDiv.innerHTML = '<p>Results cleared.</p>';
+        });
+    </script>
+</body>
+</html> 

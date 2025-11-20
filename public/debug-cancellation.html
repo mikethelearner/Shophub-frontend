@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Cancellation Requests</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+        .debug-info {
+            font-family: monospace;
+            white-space: pre-wrap;
+            background-color: #f8f8f8;
+            padding: 10px;
+            border: 1px solid #ddd;
+            margin-top: 10px;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 15px;
+            background-color: #f1f1f1;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background-color: #ddd;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Debug Cancellation Requests</h1>
+    
+    <div class="tabs">
+        <div class="tab active" data-tab="request">Request Cancellation</div>
+        <div class="tab" data-tab="respond">Respond to Cancellation</div>
+    </div>
+    
+    <div id="request-tab" class="tab-content active">
+        <h2>Request Cancellation</h2>
+        
+        <div class="form-group">
+            <label for="requestOrderId">Order ID:</label>
+            <input type="text" id="requestOrderId" placeholder="Enter order ID">
+        </div>
+        
+        <div class="form-group">
+            <label for="cancellationReason">Cancellation Reason:</label>
+            <textarea id="cancellationReason" rows="3" placeholder="Enter reason for cancellation"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="requestToken">Auth Token:</label>
+            <input type="text" id="requestToken" placeholder="Enter your auth token">
+            <button id="getRequestToken" style="width: auto; margin-top: 5px;">Get from localStorage</button>
+        </div>
+        
+        <div>
+            <button id="requestCancellation">Request Cancellation</button>
+            <button id="getRequestOrder">Get Order</button>
+            <button id="clearRequestResults">Clear Results</button>
+        </div>
+    </div>
+    
+    <div id="respond-tab" class="tab-content">
+        <h2>Respond to Cancellation</h2>
+        
+        <div class="form-group">
+            <label for="respondOrderId">Order ID:</label>
+            <input type="text" id="respondOrderId" placeholder="Enter order ID">
+        </div>
+        
+        <div class="form-group">
+            <label for="approveAction">Action:</label>
+            <select id="approveAction">
+                <option value="true">Approve Cancellation</option>
+                <option value="false">Reject Cancellation</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="respondToken">Admin Auth Token:</label>
+            <input type="text" id="respondToken" placeholder="Enter admin auth token">
+            <button id="getRespondToken" style="width: auto; margin-top: 5px;">Get from localStorage</button>
+        </div>
+        
+        <div>
+            <button id="respondCancellation">Respond to Cancellation</button>
+            <button id="getRespondOrder">Get Order</button>
+            <button id="clearRespondResults">Clear Results</button>
+        </div>
+    </div>
+    
+    <h2>Debug Log:</h2>
+    <div id="debugInfo" class="debug-info">Debug log initialized.</div>
+    
+    <h2>Results:</h2>
+    <div id="results">
+        <p>Use the buttons above to test the API.</p>
+    </div>
+    
+    <script>
+        // Tab functionality
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Remove active class from all tabs
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                // Add active class to clicked tab
+                this.classList.add('active');
+                
+                // Hide all tab content
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                // Show content for clicked tab
+                document.getElementById(this.dataset.tab + '-tab').classList.add('active');
+                
+                logDebug(`Switched to ${this.dataset.tab} tab`);
+            });
+        });
+        
+        // Debug info functionality
+        const debugInfo = document.getElementById('debugInfo');
+        function logDebug(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            debugInfo.innerHTML += `[${timestamp}] ${message}\n`;
+            debugInfo.scrollTop = debugInfo.scrollHeight;
+        }
+        
+        // Token functionality
+        document.getElementById('getRequestToken').addEventListener('click', function() {
+            const token = localStorage.getItem('token');
+            document.getElementById('requestToken').value = token || '';
+            logDebug(`Retrieved token from localStorage: ${token ? token.substring(0, 10) + '...' : 'none'}`);
+        });
+        
+        document.getElementById('getRespondToken').addEventListener('click', function() {
+            const token = localStorage.getItem('token');
+            document.getElementById('respondToken').value = token || '';
+            logDebug(`Retrieved token from localStorage: ${token ? token.substring(0, 10) + '...' : 'none'}`);
+        });
+        
+        // Request cancellation functionality
+        document.getElementById('requestCancellation').addEventListener('click', async function() {
+            const orderId = document.getElementById('requestOrderId').value;
+            const reason = document.getElementById('cancellationReason').value;
+            const token = document.getElementById('requestToken').value;
+            const resultsDiv = document.getElementById('results');
+            
+            if (!orderId || !token) {
+                resultsDiv.innerHTML = '<p class="error">Please fill in Order ID and Token</p>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<p>Sending request...</p>';
+            logDebug(`Sending PUT request to /api/orders/${orderId}/request-cancellation/ with reason: ${reason || '(none)'}`);
+            
+            try {
+                const requestBody = JSON.stringify({ cancellation_reason: reason });
+                logDebug(`Request body: ${requestBody}`);
+                
+                const response = await fetch(`http://localhost:8000/api/orders/${orderId}/request-cancellation/`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Token ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: requestBody
+                });
+                
+                const responseText = await response.text();
+                logDebug(`Response status: ${response.status}`);
+                logDebug(`Response text: ${responseText}`);
+                
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                    logDebug(`Parsed response data: ${JSON.stringify(responseData, null, 2)}`);
+                } catch (e) {
+                    responseData = { text: responseText };
+                    logDebug(`Failed to parse response as JSON: ${e.message}`);
+                }
+                
+                const html = `
+                    <p><strong>Status Code:</strong> ${response.status}</p>
+                    <p><strong>Response:</strong></p>
+                    <pre>${JSON.stringify(responseData, null, 2)}</pre>
+                    <p class="${response.ok ? 'success' : 'error'}">
+                        ${response.ok ? 'Request successful!' : 'Request failed!'}
+                    </p>
+                `;
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                logDebug(`Error: ${error.message}`);
+                resultsDiv.innerHTML = `
+                    <p class="error">Error: ${error.message}</p>
+                    <pre>${error.stack}</pre>
+                `;
+            }
+        });
+        
+        // Respond to cancellation functionality
+        document.getElementById('respondCancellation').addEventListener('click', async function() {
+            const orderId = document.getElementById('respondOrderId').value;
+            const approve = document.getElementById('approveAction').value === 'true';
+            const token = document.getElementById('respondToken').value;
+            const resultsDiv = document.getElementById('results');
+            
+            if (!orderId || !token) {
+                resultsDiv.innerHTML = '<p class="error">Please fill in Order ID and Token</p>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<p>Sending request...</p>';
+            logDebug(`Sending PUT request to /api/orders/${orderId}/respond-cancellation/ with approve: ${approve}`);
+            
+            try {
+                const requestBody = JSON.stringify({ approve: approve });
+                logDebug(`Request body: ${requestBody}`);
+                
+                const response = await fetch(`http://localhost:8000/api/orders/${orderId}/respond-cancellation/`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Token ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: requestBody
+                });
+                
+                const responseText = await response.text();
+                logDebug(`Response status: ${response.status}`);
+                logDebug(`Response text: ${responseText}`);
+                
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                    logDebug(`Parsed response data: ${JSON.stringify(responseData, null, 2)}`);
+                } catch (e) {
+                    responseData = { text: responseText };
+                    logDebug(`Failed to parse response as JSON: ${e.message}`);
+                }
+                
+                const html = `
+                    <p><strong>Status Code:</strong> ${response.status}</p>
+                    <p><strong>Response:</strong></p>
+                    <pre>${JSON.stringify(responseData, null, 2)}</pre>
+                    <p class="${response.ok ? 'success' : 'error'}">
+                        ${response.ok ? 'Request successful!' : 'Request failed!'}
+                    </p>
+                `;
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                logDebug(`Error: ${error.message}`);
+                resultsDiv.innerHTML = `
+                    <p class="error">Error: ${error.message}</p>
+                    <pre>${error.stack}</pre>
+                `;
+            }
+        });
+        
+        // Get order functionality for request tab
+        document.getElementById('getRequestOrder').addEventListener('click', async function() {
+            const orderId = document.getElementById('requestOrderId').value;
+            const token = document.getElementById('requestToken').value;
+            getOrder(orderId, token);
+        });
+        
+        // Get order functionality for respond tab
+        document.getElementById('getRespondOrder').addEventListener('click', async function() {
+            const orderId = document.getElementById('respondOrderId').value;
+            const token = document.getElementById('respondToken').value;
+            getOrder(orderId, token);
+        });
+        
+        // Common get order function
+        async function getOrder(orderId, token) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (!orderId || !token) {
+                resultsDiv.innerHTML = '<p class="error">Please fill in Order ID and Token</p>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<p>Sending request...</p>';
+            logDebug(`Sending GET request to /api/orders/${orderId}/`);
+            
+            try {
+                const response = await fetch(`http://localhost:8000/api/orders/${orderId}/`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Token ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const responseText = await response.text();
+                logDebug(`Response status: ${response.status}`);
+                logDebug(`Response text: ${responseText}`);
+                
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                    logDebug(`Parsed response data: ${JSON.stringify(responseData, null, 2)}`);
+                } catch (e) {
+                    responseData = { text: responseText };
+                    logDebug(`Failed to parse response as JSON: ${e.message}`);
+                }
+                
+                const html = `
+                    <p><strong>Status Code:</strong> ${response.status}</p>
+                    <p><strong>Response:</strong></p>
+                    <pre>${JSON.stringify(responseData, null, 2)}</pre>
+                    <p class="${response.ok ? 'success' : 'error'}">
+                        ${response.ok ? 'Request successful!' : 'Request failed!'}
+                    </p>
+                `;
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                logDebug(`Error: ${error.message}`);
+                resultsDiv.innerHTML = `
+                    <p class="error">Error: ${error.message}</p>
+                    <pre>${error.stack}</pre>
+                `;
+            }
+        }
+        
+        // Clear results functionality
+        document.getElementById('clearRequestResults').addEventListener('click', function() {
+            document.getElementById('results').innerHTML = '<p>Results cleared.</p>';
+        });
+        
+        document.getElementById('clearRespondResults').addEventListener('click', function() {
+            document.getElementById('results').innerHTML = '<p>Results cleared.</p>';
+        });
+        
+        // Log initial debug info
+        logDebug('Debug tool initialized');
+    </script>
+</body>
+</html> 

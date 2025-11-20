@@ -1,112 +1,204 @@
-
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { Minus, Plus, Trash } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/components/ui/use-toast";
+import { useCart } from "@/hooks/useCart";
+import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 const Cart = () => {
-  const cartItems = [
-    {
-      id: 1,
-      name: "Paracetamol 500mg",
-      price: 149,
-      quantity: 2,
-      image: "https://via.placeholder.com/100",
-    },
-    {
-      id: 2,
-      name: "Vitamin C 1000mg",
-      price: 399,
-      quantity: 1,
-      image: "https://via.placeholder.com/100",
-    },
-  ];
+  const { cart, removeFromCart, updateQuantity, clearCart, totalItems, totalPrice } = useCart();
+  const [couponCode, setCouponCode] = useState("");
+  const [discount, setDiscount] = useState(0);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const shipping = 99;
-  const total = subtotal + shipping;
+  // Debug: Log the cart structure
+  console.log('Cart structure in Cart component:', cart);
+
+  const handleApplyCoupon = () => {
+    if (couponCode.toLowerCase() === "discount10") {
+      setDiscount(totalPrice * 0.1);
+      toast({
+        title: "Coupon applied",
+        description: "10% discount has been applied to your order.",
+      });
+    } else if (couponCode.toLowerCase() === "welcome20") {
+      setDiscount(totalPrice * 0.2);
+      toast({
+        title: "Coupon applied",
+        description: "20% discount has been applied to your order.",
+      });
+    } else {
+      toast({
+        title: "Invalid coupon",
+        description: "The coupon code you entered is invalid or expired.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCheckout = () => {
+    // Navigate to checkout page instead of simulating checkout
+    navigate("/checkout");
+  };
+
+  if (totalItems === 0) {
+    return (
+      <div className="min-h-screen bg-[#F1F0FB] py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold mb-8 text-gray-900">Your Cart</h2>
+          <Card className="bg-white p-8 text-center">
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <ShoppingBag className="h-16 w-16 text-gray-400" />
+              <h3 className="text-xl font-semibold">Your cart is empty</h3>
+              <p className="text-gray-500">Looks like you haven't added any products to your cart yet.</p>
+              <Link to="/shop">
+                <Button className="mt-4 bg-[#3b82f6] hover:bg-[#2563eb]">
+                  Continue Shopping
+                </Button>
+              </Link>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F1F0FB] py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center mb-8">
-          <Link to="/">
-            <h1 className="text-2xl font-bold text-[#9b87f5]">E-Pharma</h1>
-          </Link>
-          <h2 className="text-2xl font-semibold">Shopping Cart</h2>
-        </div>
-
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 className="text-3xl font-bold mb-8 text-gray-900">Your Cart</h2>
+        
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-4">
-            {cartItems.map((item) => (
-              <Card key={item.id} className="border-[#9b87f5]/20">
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-4">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-20 h-20 object-cover rounded"
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg">{item.name}</h3>
-                      <p className="text-[#9b87f5] font-semibold">
-                        ₹{item.price.toFixed(2)}
-                      </p>
+          {/* Cart Items */}
+          <div className="lg:col-span-2">
+            <Card className="bg-white overflow-hidden">
+              <CardContent className="p-0">
+                {cart.map((item) => (
+                  <div key={item.id} className="p-4 border-b last:border-b-0">
+                    <div className="flex items-center space-x-4">
+                      <div className="flex-shrink-0 w-20 h-20 bg-gray-100 rounded-md p-2 flex items-center justify-center">
+                        {item.image ? (
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <ShoppingBag className="h-8 w-8 text-gray-400" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-lg font-semibold text-gray-900 truncate">
+                          {item.name}
+                        </h4>
+                        <p className="text-sm text-gray-500 line-clamp-1">
+                          {item.description}
+                        </p>
+                        <div className="mt-1 flex items-center">
+                          <span className="font-medium">₹{item.price.toFixed(2)}</span>
+                          <span className="mx-2 text-gray-400">×</span>
+                          <span>{item.quantity}</span>
+                          <span className="ml-auto font-semibold">
+                            ₹{(item.price * item.quantity).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="mt-4 flex items-center justify-end space-x-2">
+                      <div className="flex items-center border rounded-md">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                          disabled={item.quantity <= 1}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                        <span className="w-8 text-center">{item.quantity}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-8 w-8 border-[#9b87f5]"
+                        className="h-8 w-8 text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
+                        onClick={() => removeFromCart(item.id)}
                       >
-                        <Minus className="h-4 w-4 text-[#9b87f5]" />
-                      </Button>
-                      <span className="w-8 text-center">{item.quantity}</span>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8 border-[#9b87f5]"
-                      >
-                        <Plus className="h-4 w-4 text-[#9b87f5]" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-red-500"
-                      >
-                        <Trash className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                ))}
+              </CardContent>
+            </Card>
           </div>
 
+          {/* Order Summary */}
           <div className="lg:col-span-1">
-            <Card className="border-[#9b87f5]/20">
-              <CardHeader>
-                <h3 className="text-xl font-semibold">Order Summary</h3>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between">
-                  <span>Subtotal</span>
-                  <span>₹{subtotal.toFixed(2)}</span>
+            <Card className="bg-white">
+              <CardContent className="p-6">
+                <h3 className="text-xl font-semibold mb-4">Order Summary</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span className="font-medium">₹{totalPrice.toFixed(2)}</span>
+                  </div>
+                  {discount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Discount</span>
+                      <span>-₹{discount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Shipping</span>
+                    <span className="font-medium">Free</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between text-lg font-bold">
+                    <span>Total</span>
+                    <span>₹{(totalPrice - discount).toFixed(2)}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span>Shipping</span>
-                  <span>₹{shipping.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between font-semibold text-lg">
-                  <span>Total</span>
-                  <span>₹{total.toFixed(2)}</span>
+
+                <div className="mt-6 space-y-4">
+                  <div className="flex space-x-2">
+                    <Input
+                      placeholder="Coupon code"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                    />
+                    <Button 
+                      variant="outline" 
+                      onClick={handleApplyCoupon}
+                      className="whitespace-nowrap border-[#3b82f6] text-[#3b82f6]"
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                  <Button 
+                    className="w-full bg-[#3b82f6] hover:bg-[#2563eb]"
+                    onClick={handleCheckout}
+                  >
+                    Proceed to Checkout
+                  </Button>
+                  <Link to="/shop">
+                    <Button variant="outline" className="w-full">
+                      Continue Shopping
+                    </Button>
+                  </Link>
                 </div>
               </CardContent>
-              <CardFooter>
-                <Button className="w-full bg-[#9b87f5] hover:bg-[#7E69AB]">
-                  Proceed to Checkout
-                </Button>
-              </CardFooter>
             </Card>
           </div>
         </div>

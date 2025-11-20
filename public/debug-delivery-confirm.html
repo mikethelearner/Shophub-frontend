@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Delivery Confirmation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+        .debug-info {
+            font-family: monospace;
+            white-space: pre-wrap;
+            background-color: #f8f8f8;
+            padding: 10px;
+            border: 1px solid #ddd;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Debug Delivery Confirmation</h1>
+    
+    <div class="form-group">
+        <label for="orderId">Order ID:</label>
+        <input type="text" id="orderId" placeholder="Enter order ID">
+    </div>
+    
+    <div class="form-group">
+        <label for="notes">Delivery Notes (optional):</label>
+        <textarea id="notes" rows="3" placeholder="Enter any notes about the delivery"></textarea>
+    </div>
+    
+    <div class="form-group">
+        <label for="token">Auth Token:</label>
+        <input type="text" id="token" placeholder="Enter your auth token">
+        <button id="getToken" style="width: auto; margin-top: 5px;">Get from localStorage</button>
+    </div>
+    
+    <div>
+        <button id="confirmDelivery">Confirm Delivery</button>
+        <button id="getOrder">Get Order</button>
+        <button id="clearResults">Clear Results</button>
+    </div>
+    
+    <h2>Debug Log:</h2>
+    <div id="debugInfo" class="debug-info">Debug log initialized.</div>
+    
+    <h2>Results:</h2>
+    <div id="results">
+        <p>Use the buttons above to test the API.</p>
+    </div>
+    
+    <script>
+        // Debug info functionality
+        const debugInfo = document.getElementById('debugInfo');
+        function logDebug(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            debugInfo.innerHTML += `[${timestamp}] ${message}\n`;
+            debugInfo.scrollTop = debugInfo.scrollHeight;
+        }
+        
+        // Token functionality
+        document.getElementById('getToken').addEventListener('click', function() {
+            const token = localStorage.getItem('token');
+            document.getElementById('token').value = token || '';
+            logDebug(`Retrieved token from localStorage: ${token ? token.substring(0, 10) + '...' : 'none'}`);
+        });
+        
+        // Confirm delivery functionality
+        document.getElementById('confirmDelivery').addEventListener('click', async function() {
+            const orderId = document.getElementById('orderId').value;
+            const notes = document.getElementById('notes').value;
+            const token = document.getElementById('token').value;
+            const resultsDiv = document.getElementById('results');
+            
+            if (!orderId || !token) {
+                resultsDiv.innerHTML = '<p class="error">Please fill in Order ID and Token</p>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<p>Sending request...</p>';
+            logDebug(`Sending PUT request to /api/orders/${orderId}/confirm-delivery/ with notes: ${notes || '(none)'}`);
+            
+            try {
+                const requestBody = JSON.stringify({ delivery_notes: notes });
+                logDebug(`Request body: ${requestBody}`);
+                
+                const response = await fetch(`http://localhost:8000/api/orders/${orderId}/confirm-delivery/`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Token ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: requestBody
+                });
+                
+                const responseText = await response.text();
+                logDebug(`Response status: ${response.status}`);
+                logDebug(`Response text: ${responseText}`);
+                
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                    logDebug(`Parsed response data: ${JSON.stringify(responseData, null, 2)}`);
+                } catch (e) {
+                    responseData = { text: responseText };
+                    logDebug(`Failed to parse response as JSON: ${e.message}`);
+                }
+                
+                const html = `
+                    <p><strong>Status Code:</strong> ${response.status}</p>
+                    <p><strong>Response:</strong></p>
+                    <pre>${JSON.stringify(responseData, null, 2)}</pre>
+                    <p class="${response.ok ? 'success' : 'error'}">
+                        ${response.ok ? 'Request successful!' : 'Request failed!'}
+                    </p>
+                `;
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                logDebug(`Error: ${error.message}`);
+                resultsDiv.innerHTML = `
+                    <p class="error">Error: ${error.message}</p>
+                    <pre>${error.stack}</pre>
+                `;
+            }
+        });
+        
+        // Get order functionality
+        document.getElementById('getOrder').addEventListener('click', async function() {
+            const orderId = document.getElementById('orderId').value;
+            const token = document.getElementById('token').value;
+            const resultsDiv = document.getElementById('results');
+            
+            if (!orderId || !token) {
+                resultsDiv.innerHTML = '<p class="error">Please fill in Order ID and Token</p>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<p>Sending request...</p>';
+            logDebug(`Sending GET request to /api/orders/${orderId}/`);
+            
+            try {
+                const response = await fetch(`http://localhost:8000/api/orders/${orderId}/`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Token ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const responseText = await response.text();
+                logDebug(`Response status: ${response.status}`);
+                logDebug(`Response text: ${responseText}`);
+                
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                    logDebug(`Parsed response data: ${JSON.stringify(responseData, null, 2)}`);
+                } catch (e) {
+                    responseData = { text: responseText };
+                    logDebug(`Failed to parse response as JSON: ${e.message}`);
+                }
+                
+                const html = `
+                    <p><strong>Status Code:</strong> ${response.status}</p>
+                    <p><strong>Response:</strong></p>
+                    <pre>${JSON.stringify(responseData, null, 2)}</pre>
+                    <p class="${response.ok ? 'success' : 'error'}">
+                        ${response.ok ? 'Request successful!' : 'Request failed!'}
+                    </p>
+                `;
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                logDebug(`Error: ${error.message}`);
+                resultsDiv.innerHTML = `
+                    <p class="error">Error: ${error.message}</p>
+                    <pre>${error.stack}</pre>
+                `;
+            }
+        });
+        
+        document.getElementById('clearResults').addEventListener('click', function() {
+            document.getElementById('results').innerHTML = '<p>Results cleared.</p>';
+        });
+        
+        // Log initial debug info
+        logDebug('Debug tool initialized');
+    </script>
+</body>
+</html> 

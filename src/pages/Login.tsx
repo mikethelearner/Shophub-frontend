@@ -1,60 +1,130 @@
-
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Lock, User } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import useAuth from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from '@/components/ui/use-toast';
 
 const Login = () => {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setIsLoading(true);
+      console.log('Attempting login with:', { email: formData.email });
+      
+      await login(formData.email, formData.password);
+      
+      toast({
+        title: 'Login successful',
+        description: 'Welcome back!',
+      });
+      navigate('/');
+    } catch (error: any) {
+      console.error('Login error:', error);
+      
+      // Extract more specific error message if available
+      let errorMessage = 'Invalid credentials';
+      
+      if (error.response?.data) {
+        const responseData = error.response.data;
+        if (typeof responseData === 'string') {
+          errorMessage = responseData;
+        } else if (responseData.message) {
+          errorMessage = responseData.message;
+        } else if (responseData.detail) {
+          errorMessage = responseData.detail;
+        } else if (responseData.error) {
+          errorMessage = responseData.error;
+        } else if (responseData.non_field_errors) {
+          errorMessage = Array.isArray(responseData.non_field_errors) 
+            ? responseData.non_field_errors.join(', ') 
+            : responseData.non_field_errors;
+        } else if (typeof responseData === 'object') {
+          // Handle field-specific errors
+          const fieldErrors = Object.entries(responseData)
+            .map(([field, errors]) => {
+              if (Array.isArray(errors)) {
+                return `${field}: ${errors.join(', ')}`;
+              }
+              return `${field}: ${errors}`;
+            })
+            .join('; ');
+          
+          if (fieldErrors) {
+            errorMessage = fieldErrors;
+          }
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[#F1F0FB] flex items-center justify-center">
-      <Card className="w-full max-w-md border-[#9b87f5]/20">
+    <div className="flex justify-center items-center min-h-[80vh]">
+      <Card className="w-full max-w-md">
         <CardHeader>
-          <div className="text-center">
-            <Link to="/">
-              <h1 className="text-2xl font-bold text-[#9b87f5] mb-2">E-Pharma</h1>
-            </Link>
-            <p className="text-gray-600">Welcome back! Please login to continue</p>
-          </div>
+          <CardTitle className="text-2xl font-bold text-center">Login</CardTitle>
         </CardHeader>
-        <CardContent>
-          <form className="space-y-4">
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4">
             <div className="space-y-2">
-              <div className="relative">
-                <Input
-                  type="email"
-                  placeholder="Email address"
-                  className="pl-10"
-                />
-                <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              </div>
+              <label htmlFor="email" className="text-sm font-medium">
+                Email
+              </label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="Enter your email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+              />
             </div>
             <div className="space-y-2">
-              <div className="relative">
-                <Input
-                  type="password"
-                  placeholder="Password"
-                  className="pl-10"
-                />
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              </div>
+              <label htmlFor="password" className="text-sm font-medium">
+                Password
+              </label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Enter your password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+              />
             </div>
-            <Button className="w-full bg-[#9b87f5] hover:bg-[#7E69AB]">
-              Sign In
+          </CardContent>
+          <CardFooter>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? 'Logging in...' : 'Login'}
             </Button>
-            <div className="text-center text-sm">
-              <a href="#" className="text-[#9b87f5] hover:underline">
-                Forgot password?
-              </a>
-            </div>
-            <div className="text-center text-sm text-gray-600">
-              Don't have an account?{" "}
-              <a href="#" className="text-[#9b87f5] hover:underline">
-                Sign up
-              </a>
-            </div>
-          </form>
-        </CardContent>
+          </CardFooter>
+        </form>
       </Card>
     </div>
   );

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Admin Orders</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Debug Admin Orders</h1>
+    
+    <div>
+        <button id="checkAuth">Check Authentication</button>
+        <button id="fetchOrders">Fetch Admin Orders</button>
+        <button id="clearResults">Clear Results</button>
+    </div>
+    
+    <h2>Results:</h2>
+    <div id="results">
+        <p>Click a button above to test functionality.</p>
+    </div>
+    
+    <script>
+        // Configure axios
+        const api = axios.create({
+            baseURL: 'http://localhost:8000/api',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        // Add token to requests if available
+        api.interceptors.request.use(
+            (config) => {
+                const token = localStorage.getItem('token');
+                if (token) {
+                    config.headers.Authorization = `Token ${token}`;
+                    console.log('Added Authorization header with Token format');
+                }
+                return config;
+            },
+            (error) => {
+                console.error('Request interceptor error:', error);
+                return Promise.reject(error);
+            }
+        );
+        
+        // Get DOM elements
+        const resultsDiv = document.getElementById('results');
+        const checkAuthBtn = document.getElementById('checkAuth');
+        const fetchOrdersBtn = document.getElementById('fetchOrders');
+        const clearResultsBtn = document.getElementById('clearResults');
+        
+        // Helper function to display results
+        function displayResult(title, data, isError = false) {
+            const resultElement = document.createElement('div');
+            resultElement.innerHTML = `
+                <h3>${title}</h3>
+                <pre class="${isError ? 'error' : ''}">${JSON.stringify(data, null, 2)}</pre>
+                <hr>
+            `;
+            resultsDiv.appendChild(resultElement);
+        }
+        
+        // Check authentication
+        checkAuthBtn.addEventListener('click', async () => {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    displayResult('Authentication Check', { error: 'No token found in localStorage' }, true);
+                    return;
+                }
+                
+                displayResult('Token from localStorage', { token });
+                
+                const response = await api.get('/users/profile/');
+                displayResult('User Profile', response.data);
+            } catch (error) {
+                displayResult('Authentication Error', {
+                    message: error.message,
+                    response: error.response?.data,
+                    status: error.response?.status
+                }, true);
+            }
+        });
+        
+        // Fetch admin orders
+        fetchOrdersBtn.addEventListener('click', async () => {
+            try {
+                const response = await api.get('/orders/admin/');
+                displayResult('Admin Orders', response.data);
+            } catch (error) {
+                displayResult('Fetch Orders Error', {
+                    message: error.message,
+                    response: error.response?.data,
+                    status: error.response?.status
+                }, true);
+            }
+        });
+        
+        // Clear results
+        clearResultsBtn.addEventListener('click', () => {
+            resultsDiv.innerHTML = '<p>Results cleared.</p>';
+        });
+    </script>
+</body>
+</html> 
